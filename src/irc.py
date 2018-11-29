@@ -1,5 +1,7 @@
 import logging
 import time
+import os
+import random
 from src.irc_impl import BaseIRCClient
 
 MESSAGE_SPLIT_LEN = 420
@@ -13,9 +15,10 @@ class IRCEvent():
 
 class IRCBot(BaseIRCClient):
 	def __init__(self, args, kwargs={}, ns_password=None):
-		super().__init__(*args, **kwargs)
 		self.event_handlers = {}
 		self.ns_password = ns_password
+		self.reconnect_counter = 0
+		super().__init__(*args, **kwargs)
 	def _invoke_event_handler(self, name, args=(), kwargs={}):
 		if name not in self.event_handlers.keys():
 			return logging.warning("Unhandeled '%s' event", name)
@@ -27,12 +30,14 @@ class IRCBot(BaseIRCClient):
 
 	def on_connected(self):
 		logging.info("IRC connection established")
+		self.reconnect_counter = 0
 		if self.ns_password is not None:
 			self.privmsg("NickServ", "IDENTIFY " + self.ns_password)
 		self._invoke_event_handler("connected")
 
 	def on_nickerror(self, err):
-		self._invoke_event_handler("nick_in_use")
+		#self._invoke_event_handler("nick_in_use")
+		self.nick("Guest%d" % random.randint(1, 99999))
 
 	def on_join(self, target, source):
 		if source.split("!")[0] == self.get_nick():
@@ -57,9 +62,13 @@ class IRCBot(BaseIRCClient):
 		self._invoke_event_handler("kick", (IRCEvent(target, source, othernick=kicked), ))
 
 	def on_disconnect(self):
+		self.reconnect_counter += 1
+		if self.reconnect_counter > 10:
+			logging.error("Reconnecting to IRC failed after 10 tries, exiting")
+			os._exit(1)
 		logging.warning("IRC connection error, reconnecting")
 		time.sleep(5)
-		self.reconnect()
+		self.connect()
 
 class IRCClient():
 	def __init__(self, config):

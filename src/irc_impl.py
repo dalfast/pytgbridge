@@ -4,8 +4,8 @@ import time
 import select
 
 # A practical* real-world** implementation of an Internet Relay Chat client
-# * : This means I didn't read the RFC
-# **: This means it only implements whatever niche usecase I had at that time
+# * : This means it only implements whatever niche usecase I had at that time
+# **: This means I didn't read the RFC
 
 __all__ = ["BaseIRCClient"]
 
@@ -161,9 +161,7 @@ class BaseIRCClient():
 				rl.reset()
 				time.sleep(1) # since the socket isn't open, there is nothing to do for us
 				continue
-			rlist, _, _ = select.select([self.s], [], [])
-			if len(rlist) == 0:
-				continue
+			select.select([self.s], [], [])
 
 			try:
 				data = list(rl.readline(self.s))
